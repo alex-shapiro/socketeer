@@ -21,8 +21,7 @@ defmodule WebSocketHandler do
     { headers, _ } = :cowboy_req.headers(req)
     { _ , protocol } = List.keyfind headers, "sec-websocket-protocol", 0
     handler = case protocol do
-      "dumb-increment-protocol" -> DumbIncrementHandler
-      "umtp-protocol" -> UmtpHandler
+      "broadcast-protocol" -> BroadcastHandler
     end
 
     # Init selected handler

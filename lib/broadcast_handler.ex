@@ -1,4 +1,4 @@
-defmodule UmtpHandler do
+defmodule BroadcastHandler do
   require Poison
 
   def init(_any, req) do

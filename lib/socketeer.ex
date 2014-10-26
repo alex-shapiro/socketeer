@@ -4,10 +4,8 @@ defmodule Socketeer do
   def start(_type, _args) do
     dispatch = :cowboy_router.compile([
       {:_, [
-        {'/', HelloHandler, []},
-        {'/mail', StaticHandler, []},
-        {'/umtp/0.1', WebSocketHandler, [{:dumb_protocol, DumbIncrementHandler},
-                                         {:umtp_protocol, UmtpHandler}]}
+        {'/', StaticHandler, []},
+        {'/socketeer', WebSocketHandler, []}
       ]}
     ])
 
