@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset=utf-8 />
+ <title>Elixir Websocket</title>
+</head>
+
+<body>
+<h2>"dumb-increment-protocol" test</h2>
+The incrementing number is coming from the server and is individual for
+each connection to the server. Try opening a second browser window.
+Click the button to send the server a websocket message to
+reset the number.<br><br>
+
+<table>
+  <tr>
+    <td align=center><input type=button id=offset value="Reset counter" onclick="reset();" ></td>
+    <td width=100 align=center><div id=number> </div></td>
+    <td id=wsdi_statustd align=center><div id=wsdi_status>Not initialized</div></td>
+  </tr>
+</table>
+
+<h2>UMTP test</h2>
+<div id="umtp_status">Not initialized</div>
+<form id="msg-form">
+  <input type="text" id="sender" placeholder="type name">
+  <input type="text" id="message" placeholder="type message">
+  <input type="submit" value="Send">
+</form>
+<ul id="umtp-messages"></div>
+<script>
+
+function get_appropriate_ws_url()
+{
+  var pcol;
+  var u = document.URL;
+
+  /*
+   * We open the websocket encrypted if this page came on an
+   * https:// url itself, otherwise unencrypted
+   */
+
+  if (u.substring(0, 5) == "https") {
+    pcol = "wss://";
+    u = u.substr(8);
+  } else {
+    pcol = "ws://";
+    if (u.substring(0, 4) == "http")
+      u = u.substr(7);
+  }
+
+  u = u.split('/');
+
+  return pcol + u[0] + "/umtp/0.1";
+}
+
+
+document.getElementById("number").textContent = "0"
+
+  /* dumb increment protocol */
+
+  // var dumb_socket = new WebSocket(
+  //   get_appropriate_ws_url(),
+  //  "dumb-increment-protocol");
+
+  // try {
+  //   dumb_socket.onopen = function() {
+  //     document.getElementById("wsdi_statustd").style.backgroundColor = "#40ff40";
+  //     document.getElementById("wsdi_status").textContent = " websocket connection opened ";
+  //   }
+
+  //   dumb_socket.onmessage = function got_packet(msg) {
+  //     document.getElementById("number").textContent = msg.data + "\n";
+  //   }
+
+  //   dumb_socket.onclose = function(){
+  //     document.getElementById("wsdi_statustd").style.backgroundColor = "#ff4040";
+  //     document.getElementById("wsdi_status").textContent = " websocket connection CLOSED ";
+  //   }
+  // } catch(exception) {
+  //   alert('<p>Error' + exception);
+  // }
+
+  // function reset() {
+  //   dumb_socket.send("reset\n");
+  // }
+
+  /* UMTP protocol */
+  var umtp_socket = new WebSocket(
+    get_appropriate_ws_url(),
+    "umtp-protocol");
+
+  try {
+    umtp_socket.onopen = function() {
+      var umtp_status = document.getElementById("umtp_status");
+      umtp_status.style.backgroundColor = "#40ff40";
+      umtp_status.innerHTML = "websocket connection opened";
+    }
+
+    umtp_socket.onmessage = function got_packet(msg) {
+      message_list = document.getElementById("umtp-messages");
+      message = document.createElement("li");
+      message.textContent = msg.data;
+      message_list.appendChild(message);
+    }
+
+    umtp_socket.onclose = function() {
+      umtp_status = document.getElementById("umtp_status");
+      umtp_status.style.backgroundColor = "#ff4040";
+      umtp_status.innerHTML = "websocket connection CLOSED";
+    }
+
+    var umtp_form = document.getElementById("msg-form");
+    umtp_form.addEventListener("submit", function(e) {
+      e.preventDefault();
+      var umtp_user_input  = document.getElementById("sender");
+      var umtp_msg_input = document.getElementById("message");
+      var umtp_user = umtp_user_input.value;
+      var umtp_message = umtp_msg_input.value;
+      console.log(umtp_user + " sends: " + umtp_message);
+      umtp_socket.send(JSON.stringify({
+        sender: umtp_user,
+        message: umtp_message
+      }));
+      umtp_msg_input.value = "";
+    }, false);
+
+
+  } catch(exception) {
+    alert('<p>Error' + exception);
+  }
+
+</script>
+
+</body>
+</html>
