@@ -4,10 +4,9 @@ Socketeer
 Socketeer is a set of messaging demos for Elixir. The demos are:
 
 * broadcast (done)
-* user to user (todo)
-* asynchronous user to user (todo)
-* user to user, where each user has multiple clients (todo)
-* asynchronous multiclient user to user (todo)
+* user to user, each user has a single client (done)
+* user to user, each user may have multiple clients (todo)
+* user to user, each user may have multiple clients and messages must be stored (todo)
 
 To start socketeer, run:
 

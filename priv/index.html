@@ -8,16 +8,30 @@
 <body>
 
 <h2>Broadcast Demo</h2>
-<p>Test a basic broadcast. All users on this page will receive all messages sent by all other users.</p>
+<p>All users on this page will receive all messages sent by all other users.</p>
 <div id="broadcast_status">Not initialized</div>
 <form id="broadcast-form">
-  <input type="text" id="sender" placeholder="type name">
+  <input type="text" id="sender" placeholder="type your name">
   <input type="text" id="message" placeholder="type message">
   <input type="submit" value="Send">
 </form>
-<ul id="broadcast-messages"></div>
+<ul id="broadcast-messages"></ul>
 
-
+<h2>User to User Demo</h2>
+<p>Register as a user. Send a message to a particular user; if the user is available the message will be delivered.</p>
+<div id="user_status">Not initialized</div>
+<div id="user_error" style="background: red; display: none">This </div>
+<form id="user-registration-form">
+  <input type="text" id="user-registration" placeholder="pick a username">
+  <input type="submit" value="Begin sending messages">
+</form>
+<form id="user-message-form" style="display: none">
+  <p id="user-name" style="font-weight: bold"></p>
+  <input type="text" id="recipient" placeholder="To:">
+  <input type="text" id="user-message" placeholder="type your message here">
+  <input type="submit" value="Send">
+</form>
+<ul id="user-messages"></ul>
 
 <script>
 
@@ -45,47 +59,116 @@ function get_appropriate_ws_url()
   return pcol + u[0] + "/socketeer";
 }
 
+var set_open_status = function(element_id) {
+  e = document.getElementById(element_id);
+  e.style.backgroundColor = "#40ff40";
+  e.innerHTML = "websocket connection opened";
+};
+
+var set_closed_status = function(element_id) {
+  e = document.getElementById(element_id);
+  e.style.backgroundColor = "#ff4040";
+  e.innerHTML = "websocket connection CLOSED";
+};
+
 /* broadcast protocol */
 var broadcast_socket = new WebSocket(
   get_appropriate_ws_url(),
   "broadcast-protocol");
 
-try {
-  broadcast_socket.onopen = function() {
-    var broadcast_status = document.getElementById("broadcast_status");
-    broadcast_status.style.backgroundColor = "#40ff40";
-    broadcast_status.innerHTML = "websocket connection opened";
-  }
+broadcast_socket.onopen = function() { set_open_status("broadcast_status"); }
+broadcast_socket.onclose = function() { set_closed_status("broadcast_status"); }
 
-  broadcast_socket.onmessage = function got_packet(msg) {
-    message_list = document.getElementById("broadcast-messages");
-    message = document.createElement("li");
-    message.textContent = msg.data;
-    message_list.appendChild(message);
-  }
-
-  broadcast_socket.onclose = function() {
-    broadcast_status = document.getElementById("broadcast_status");
-    broadcast_status.style.backgroundColor = "#ff4040";
-    broadcast_status.innerHTML = "websocket connection CLOSED";
-  }
-
-  var broadcast_form = document.getElementById("broadcast-form");
-  broadcast_form.addEventListener("submit", function(e) {
-    e.preventDefault();
-    var broadcast_user_input  = document.getElementById("sender");
-    var broadcast_msg_input = document.getElementById("message");
-    var broadcast_user = broadcast_user_input.value;
-    var broadcast_message = broadcast_msg_input.value;
-    console.log(broadcast_user + " sends: " + broadcast_message);
-    broadcast_socket.send(broadcast_user + ": " + broadcast_message);
-    broadcast_msg_input.value = "";
-  }, false);
-
-
-} catch(exception) {
-  alert('<p>Error' + exception);
+var broadcast_messages = document.getElementById("broadcast-messages");
+broadcast_socket.onmessage = function got_packet(msg) {
+  var message = document.createElement("li");
+  message.textContent = msg.data;
+  broadcast_messages.appendChild(message);
 }
+
+var broadcast_form = document.getElementById("broadcast-form");
+broadcast_form.addEventListener("submit", function(e) {
+  e.preventDefault();
+  var broadcast_user = document.getElementById("sender").value;
+  var broadcast_message_input = document.getElementById("message");
+  var broadcast_message = broadcast_message_input.value;
+  console.log(broadcast_user + " sends: " + broadcast_message);
+  broadcast_socket.send(broadcast_user + ": " + broadcast_message);
+  broacast_message_input.value = "";
+}, false);
+
+
+/* user to user protocol */
+var user_socket = new WebSocket(
+  get_appropriate_ws_url(),
+  "user-to-user-protocol");
+var user_socket_state = "new";
+var user_socket_username;
+
+user_socket.onopen = function() { set_open_status("user_status"); }
+user_socket.onclose = function() { set_closed_status("user_status"); }
+
+var user_registration_form = document.getElementById("user-registration-form");
+user_registration_form.addEventListener("submit", function(e) {
+  e.preventDefault();
+  var username = document.getElementById("user-registration").value;
+  console.log("registering as \"" + username + "\" ...");
+  user_socket.send("username: " + username);
+  user_socket_state = "awaiting_registration";
+  user_socket_username = username;
+  document.getElementById("user-name").innerHTML = "username: " + username;
+}, false);
+
+var user_message_form = document.getElementById("user-message-form");
+user_message_form.addEventListener("submit", function(e) {
+  e.preventDefault();
+  var recipient = document.getElementById("recipient").value;
+  var message  = document.getElementById("user-message").value;
+  var json = JSON.stringify({"message": message, "recipient": recipient});
+  user_socket.send(json);
+  console.log("sending " + json);
+  user_socket_state = "sending_message";
+  document.getElementById("user-message").value = "";
+}, false);
+
+var user_messages = document.getElementById("user-messages");
+user_socket.onmessage = function (msg) {
+  if (user_socket_state === "awaiting_registration") {
+    if (msg.data.substring(0,3) === "220") {
+      user_socket_state = "registered";
+      document.getElementById("user_error").style.display = "none";
+      document.getElementById("user-registration-form").style.display = "none";
+      document.getElementById("user-message-form").style.display = "block";
+      console.log("registered.");
+    } else {
+      user_socket_state = "new";
+      document.getElementById("user_error").innerHTML = msg.data;
+      document.getElementById("user_error").style.display = "block";
+      console.log(msg.data);
+    }
+  } else if (user_socket_state === "registered" || user_socket_state === "sending_message") {
+    if (msg.data[0] === "{") {
+      message = JSON.parse(msg.data);
+      console.log("from: " + message.sender);
+      console.log("data: " + message.message);
+      var message_elt = document.createElement("li");
+      message_elt.textContent = message.sender + ": " + message.message;
+      user_messages.appendChild(message_elt);
+    }
+  } else if (user_socket_state === "sending_message") {
+    if (msg.data.substring(0,3) === "200") {
+      user_socket_state = "registered";
+      console.log("sent.")
+    } else {
+      user_socket_state = "registered";
+      document.getElementById("user_error").innerHTML = msg.data;
+      document.getElementById("user_error").style.display = "block";
+      console.log(msg.data);
+    }
+  }
+};
+
+
 
 </script>
 

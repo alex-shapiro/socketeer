@@ -22,6 +22,7 @@ defmodule WebSocketHandler do
     { _ , protocol } = List.keyfind headers, "sec-websocket-protocol", 0
     handler = case protocol do
       "broadcast-protocol" -> BroadcastHandler
+      "user-to-user-protocol" -> UserHandler
     end
 
     # Init selected handler

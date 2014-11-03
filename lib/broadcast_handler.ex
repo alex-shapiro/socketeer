@@ -1,5 +1,4 @@
 defmodule BroadcastHandler do
-  require Poison
 
   def init(_any, req) do
     subscribe
@@ -35,7 +34,3 @@ defmodule BroadcastHandler do
   end
 
 end
-
-
-    # broadcast(msg)
-    # %{"sender" => sender, "message" => message} = Poison.Parser.parse!(msg)
